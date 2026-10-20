@@ -2,6 +2,7 @@
   "id": "rise",
   "label": "Monster Hunter Rise",
   "data_dir": "rise",
+  "image": "/images/rise.jpg",
   "examples": [
     "What is the best armor set I can make for bow, rank 3?",
     "What does Critical Eye do?",
