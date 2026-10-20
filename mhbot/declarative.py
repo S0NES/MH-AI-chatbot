@@ -209,7 +209,8 @@ def load(data_dir, game_def):
     model.update({
         "ranks": game_def["ranks"],
         "weapon_types": [{"id": w["name"], "name": w["name"], "aliases": w.get("aliases", []),
-                          "text_hints": w.get("text_hints", [])} for w in game_def["weapon_types"]],
+                          "text_hints": w.get("text_hints", []),
+                          "lacks": w.get("lacks", [])} for w in game_def["weapon_types"]],
         "part_order": game_def.get("part_order", []),
         "extras_label": game_def.get("extras_label", "Extras"),
         "notes": list(game_def.get("notes", [])),

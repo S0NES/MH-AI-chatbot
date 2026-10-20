@@ -67,16 +67,23 @@ class Game:
         return found
 
     def weapon_profile(self, weapon_type):
-        """Skill weights for a weapon type, read from the skill descriptions in the data and the scoring block of the definition."""
+        """Skill weights for a weapon type, read from the skill descriptions in the data and the scoring block of the definition.
+
+        A skill is dropped when its text depends on a mechanic the weapon type lacks (`lacks` in the definition).
+        """
         cfg = self.scoring
         keywords = {k.lower(): v for k, v in cfg.get("keywords", {}).items()}
         verbs = re.compile(r"\b(?:%s)" % "|".join(re.escape(v) for v in cfg.get("positive_verbs", ["increase", "improve", "boost"])))
         ignore = [i.lower() for i in cfg.get("ignore_if_contains", [])]
+        lacks = next((wt.get("lacks", []) for wt in self.weapon_types if wt["name"] == weapon_type), [])
+        lacks = [re.compile(r"\b%s(?:s|es)?\b" % re.escape(norm(p))) for p in lacks]
         prof = {}
         for name, s in self.skills.items():
             desc = s["description"].lower()
             all_text = desc + " " + " ".join(s["levels"]).lower()
             if any(i in all_text for i in ignore):
+                continue
+            if any(p.search(norm(all_text)) for p in lacks):
                 continue
             named = self._weapon_mentions(norm(all_text))
             if named and weapon_type not in named:
@@ -85,7 +92,7 @@ class Game:
             for sentence in re.split(r"[.;]", desc):
                 if verbs.search(sentence):
                     for k, v in keywords.items():
-                        if re.search(r"\b%s" % re.escape(k), sentence):
+                        if re.search(r"\b%ss?\b" % re.escape(k), sentence):
                             hits[k] = v
             weight = max(hits.values(), default=0.0)
             why = max(hits, key=hits.get) if hits else ""

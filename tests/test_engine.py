@@ -73,6 +73,28 @@ class RiseTests(unittest.TestCase):
         self.assertNotIn("Pierce Up", gs)
         self.assertNotIn("Defense Boost", bow)
 
+    def test_skills_needing_a_missing_mechanic_are_not_recommended(self):
+        for weapon in ("bow", "heavy bowgun", "light bowgun"):
+            profile = self.g.weapon_profile(weapon)
+            for skill in ("Bludgeoner", "Offensive Guard", "Critical Draw", "Punishing Draw", "Handicraft"):
+                self.assertNotIn(skill, profile, (weapon, skill))
+        self.assertIn("Offensive Guard", self.g.weapon_profile("great sword"))
+
+    def test_non_damage_skills_are_not_scored(self):
+        for weapon in ("bow", "great sword"):
+            profile = self.g.weapon_profile(weapon)
+            for skill in ("Diversion", "Bombardier", "Defense Boost"):
+                self.assertNotIn(skill, profile, (weapon, skill))
+
+    def test_build_lists_what_each_skill_does(self):
+        r = answer(self.g, "best armor for bow")
+        table = next(b["table"] for b in r["blocks"] if "table" in b and b["table"]["head"][0] == "Skill")
+        self.assertEqual(table["head"][3:], ["What it does", "Counted"])
+        for row in table["rows"]:
+            self.assertEqual(row[3], self.g.skills[row[0]]["description"])
+        counted = {row[0] for row in table["rows"] if row[4] == "yes"}
+        self.assertTrue(counted <= set(self.g.weapon_profile("bow")))
+
     def test_unrelated_question_is_not_answered(self):
         self.assertEqual(answer(self.g, "who won the world cup")["intent"], "unknown")
 

@@ -10,7 +10,7 @@
     "Which decoration gives Attack Boost?"
   ],
   "scoring": {
-    "_help": "How 'best build' is judged: read from the database's own skill texts. A skill scores if its description or level texts contain one of these words (weight = heaviest word found). Skills naming weapon types are only used for those types. Remove this block to rank by defense only.",
+    "_help": "How 'best build' is judged from the database's own skill texts: a skill scores when a description sentence has a positive verb and one of these keywords. Skills naming weapon types only count for those types, and a weapon type's `lacks` phrases exclude skills that depend on a mechanic it does not have. Remove this block to rank by defense only.",
     "keywords": {
       "attack power": 4.0,
       "attack": 3.0,
@@ -28,7 +28,8 @@
       "bomb",
       "wirebug",
       "wirefall",
-      "mount"
+      "mount",
+      "explosive"
     ],
     "weapon_specific_weight": 1.5,
     "positive_verbs": [
@@ -218,6 +219,11 @@
       "text_hints": [
         "arrow",
         "coating"
+      ],
+      "lacks": [
+        "sharpness",
+        "guard",
+        "draw attack"
       ]
     },
     {
@@ -231,6 +237,11 @@
         "ammo",
         "recoil",
         "bowgun"
+      ],
+      "lacks": [
+        "sharpness",
+        "guard",
+        "draw attack"
       ]
     },
     {
@@ -244,6 +255,11 @@
         "ammo",
         "recoil",
         "bowgun"
+      ],
+      "lacks": [
+        "sharpness",
+        "guard",
+        "draw attack"
       ]
     }
   ],

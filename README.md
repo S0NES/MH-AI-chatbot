@@ -70,7 +70,7 @@ Without a model the site answers with the rules parser. To add a model, see [Lan
 | `examples` | example questions shown in the UI |
 | `ranks` | ordered ranks (`id`, `label`, `aliases`, `hunter_rank`). A number in a question ("rank 3", "HR 3") is matched against each rank's `hunter_rank` range `[min, max]`, `max` being `null` for no upper limit. Without ranges the number is the position in the list. A rank with no data in the dataset falls back to the nearest lower rank, with a note |
 | `part_order` | order in which armor parts are listed |
-| `weapon_types` | `value` (as stored in the data), `name`, `aliases`, optional `text_hints` |
+| `weapon_types` | `value` (as stored in the data), `name`, `aliases`, optional `text_hints` (words that name the weapon inside skill texts, such as `arrow`) and optional `lacks` (phrases for mechanics the weapon does not have, such as `guard`; a skill whose text mentions one is never recommended for that weapon) |
 | `extras_label` | display name for weapon extras (for example rampage skills) |
 | `notes` | dataset caveats shown under build answers |
 | `ambiguous_skill_names` | skills named like ordinary words; they only match with context |
@@ -111,8 +111,9 @@ The data location can be overridden without editing the file: `MH_DATA_DIR_<ID>`
 
 Build answers rank armor sets by the skills that matter for the chosen weapon. That is read from the
 database: a skill counts when a sentence in its description contains one of the `scoring.keywords`
-together with a positive verb, and a skill whose texts name other weapon types is excluded.
-Each answer lists the skills that were scored and why. Remove the `scoring` block to rank by defense only.
+together with a positive verb. Before a skill is recommended its text is checked against the weapon: a skill
+that names other weapon types, or depends on a mechanic the weapon lacks (`lacks`), is excluded.
+The build table shows what each skill does, taken from the database, and whether it was counted. Remove the `scoring` block to rank by defense only.
 
 ```json
 "scoring": {

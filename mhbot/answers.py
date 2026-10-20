@@ -52,8 +52,9 @@ def answer_build(game, parsed):
         blocks.append({"p": "Decorations: " + ", ".join("%s x%d" % (n, c) for n, c in sorted(counts.items()))})
     prof = best["profile"]
     skill_rows = sorted(best["levels"].items(), key=lambda kv: (kv[0] not in prof, -kv[1], kv[0]))
-    blocks.append({"table": {"head": ["Skill", "Level", "Max"],
-                             "rows": [[n, str(lv), str(game.skills[n]["max_level"]) if n in game.skills else "?"]
+    blocks.append({"table": {"head": ["Skill", "Level", "Max", "What it does", "Counted"],
+                             "rows": [[n, str(lv), str(game.skills[n]["max_level"]), game.skills[n]["description"],
+                                       "yes" if n in prof else "no"]
                                       for n, lv in skill_rows]}})
     blocks.append({"p": "Total defense %d | resistances %s" % (
         best["defense"], ", ".join("%s %+d" % kv for kv in best["res"].items()))})
