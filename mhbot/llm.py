@@ -9,7 +9,8 @@ from string import Template
 from . import nlu
 from .knowledge import norm
 
-INTENTS = ["build", "best_weapon", "skill_info", "armor_with_skill", "deco_for_skill", "recipe", "entity_info", "unknown"]
+INTENTS = ["build", "best_weapon", "skill_info", "armor_with_skill", "deco_for_skill", "recipe", "material_source",
+           "entity_info", "unknown"]
 PROMPTS = Path(__file__).resolve().parents[1] / "prompts"
 
 
@@ -85,11 +86,13 @@ class LLM:
                 skills += nlu.find_skills(game, norm(str(s)))
         skills = list(dict.fromkeys(skills))
         entity = base["entity"]
-        if not entity and data.get("name"):
-            entity = nlu.find_entity(game, norm(str(data["name"])))
+        materials = base["materials"]
+        if data.get("name"):
+            entity = entity or nlu.find_entity(game, norm(str(data["name"])))
+            materials = materials or nlu.find_materials(game, norm(str(data["name"])))
         intent = base["intent"] if base["intent"] != "unknown" else data["intent"]
         return {"q": base["q"], "intent": intent, "weapon": weapon, "rank_id": rank_id,
-                "rank_note": rank_note, "skills": skills, "entity": entity}
+                "rank_note": rank_note, "skills": skills, "entity": entity, "materials": materials}
 
     def narrate(self, game, question, response):
         """One or two sentences summarising the already-computed answer. Returns text or ''."""

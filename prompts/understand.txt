@@ -5,7 +5,7 @@ Convert the user's question into JSON. Reply with JSON only, with these keys:
 - weapon: one of $weapons, or null
 - rank: one of $ranks, or null. A number in the question is a hunter rank: give the rank whose range contains it.
 - skills: names from the skill list below that the question refers to
-- name: an armor, weapon, decoration or item name from the dataset, or null
+- name: an armor, weapon, decoration, material or item name from the dataset, or null
 
 Intents:
 - build: the best armor set for a weapon
@@ -14,6 +14,7 @@ Intents:
 - armor_with_skill: which armor pieces have a skill
 - deco_for_skill: which decorations give a skill
 - recipe: materials needed to craft something
+- material_source: where to get or farm a material
 - entity_info: details about a named piece of gear or item
 - unknown: anything that is not about this dataset
 

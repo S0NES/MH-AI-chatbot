@@ -11,7 +11,9 @@ BEST_WORDS = {"best", "good", "top", "strongest", "optimal", "recommend", "recom
 SKILL_Q_WORDS = {"what", "does", "do", "explain", "effect", "effects", "work", "works", "mean", "info", "about", "describe"}
 FIND_WORDS = {"which", "what", "has", "have", "with", "gives", "give", "list", "show", "find", "contains", "providing", "grants"}
 PART_WORDS = {"piece", "pieces", "head", "chest", "arms", "waist", "legs", "helmet", "helmets", "helm", "helms", "gloves", "boots", "greaves", "vambraces"}
-CARRY_INTENTS = {"build", "best_weapon", "armor_with_skill", "skill_info", "entity_info"}
+SOURCE_WORDS = {"where", "farm", "farming", "farmar", "drop", "drops", "dropped", "source", "sources", "obtain", "obtained",
+                "gather", "find", "locate", "location", "acquire", "get", "getting", "onde", "conseguir", "obter", "encontrar"}
+CARRY_INTENTS ={"build", "best_weapon", "armor_with_skill", "skill_info", "entity_info"}
 PRONOUNS = {"it", "its", "this", "that", "these", "those", "them", "same"}
 FOLLOW_UP_OPENERS = ("what about", "how about", "and ", "also ", "now ", "same ", "then ")
 FILLER = {"what", "about", "how", "and", "for", "also", "now", "then", "the", "a", "an", "with", "in", "at", "on", "of",
@@ -116,7 +118,21 @@ def find_entity(game, q):
     return None
 
 
-def classify(words, weapon, skills, entity):
+def find_materials(game, q):
+    """Crafting materials named in the question, longest names first, without names nested inside a longer match."""
+    padded = " %s " % q
+    found = [n for n in game.material_links if len(n) >= 4 and " %s " % n in padded]
+    found.sort(key=len, reverse=True)
+    kept = []
+    for name in found:
+        if not any(name in other for other in kept):
+            kept.append(name)
+    return [game.material_links[n][0] for n in kept]
+
+
+def classify(words, weapon, skills, entity, materials=()):
+    if words & SOURCE_WORDS and (materials or (entity and entity["kind"] == "item")):
+        return "material_source"
     if skills and words & DECO_WORDS:
         return "deco_for_skill"
     if entity and words & RECIPE_WORDS:
@@ -177,6 +193,7 @@ def parse(game, question, context=None):
     rank_id, rank_note = find_rank(game, q)
     skills = find_skills(game, q)
     entity = find_entity(game, q)
+    materials = find_materials(game, q)
 
     ctx = clean_context(game, context)
     follow_up = bool(ctx) and (bool(words & PRONOUNS) or q.startswith(FOLLOW_UP_OPENERS) or len(words) <= 4)
@@ -188,8 +205,8 @@ def parse(game, question, context=None):
             kind, row = game.named[norm(ctx["entity"])]
             entity = {"kind": kind, "row": row}
 
-    intent = classify(words, weapon, skills, entity)
+    intent = classify(words, weapon, skills, entity, materials)
     if follow_up and ctx.get("intent") and (intent == "unknown" or _only_changes_slots(game, words, skills, entity)):
         intent = ctx["intent"]
     return {"q": q, "weapon": weapon, "rank_id": rank_id, "rank_note": rank_note, "skills": skills,
-            "entity": entity, "intent": intent, "follow_up": follow_up}
+            "entity": entity, "materials": materials, "intent": intent, "follow_up": follow_up}

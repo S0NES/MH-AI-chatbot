@@ -178,6 +178,31 @@ def answer_entity(game, parsed, recipe=False):
     return {"intent": "recipe" if recipe else "entity_info", "blocks": blocks, "suggestions": []}
 
 
+def answer_material_source(game, parsed):
+    names = list(parsed.get("materials") or [])[:5]
+    if not names and parsed["entity"]:
+        names = [parsed["entity"]["row"]["name"]]
+    rows, notes, uses_blocks = [], [], []
+    for name in names:
+        item = game.named.get(norm(name))
+        description = item[1]["description"] if item and item[0] == "item" else ""
+        link = game.material_links.get(norm(name), ("", ""))[1]
+        rows.append([name, description, _link_cell(link) or "no link in the dataset"])
+        if not link:
+            notes.append("The dataset has no page link for %s." % name)
+        uses = game.material_uses.get(name, [])
+        if uses:
+            shown = ", ".join(gear for _, gear in uses[:8])
+            more = " and %d more" % (len(uses) - 8) if len(uses) > 8 else ""
+            uses_blocks.append({"p": "%s is used to craft %d item%s: %s%s." % (name, len(uses), "" if len(uses) == 1 else "s", shown, more)})
+    blocks = [{"h": "Where to get " + ", ".join(names)},
+              {"table": {"head": ["Material", "What it is", "Link"], "rows": rows}}] + uses_blocks
+    if len(notes) < len(names):
+        blocks.append({"note": "The dataset does not record where materials drop. Open the link for where it comes from."})
+    blocks += [{"note": n} for n in notes]
+    return {"intent": "material_source", "blocks": blocks, "suggestions": []}
+
+
 def answer_unknown(game, q):
     near = difflib.get_close_matches(q, list(game.named) + list(game.skill_by_norm), n=4, cutoff=0.75)
     blocks = [{"p": "I couldn't tell what you're asking. I can answer questions about %s's armor, weapons, skills, decorations and items." % game.label}]
@@ -200,6 +225,8 @@ def answer_parsed(game, parsed):
         resp = answer_armor_with_skill(game, parsed)
     elif intent == "deco_for_skill" and parsed["skills"]:
         resp = answer_deco_for_skill(game, parsed)
+    elif intent == "material_source" and (parsed.get("materials") or parsed["entity"]):
+        resp = answer_material_source(game, parsed)
     elif intent in ("recipe", "entity_info") and parsed["entity"]:
         resp = answer_entity(game, parsed, recipe=intent == "recipe")
     else:

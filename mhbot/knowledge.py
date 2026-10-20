@@ -27,6 +27,14 @@ class Game:
                            ("decoration", self.decorations), ("item", self.items)):
             for row in rows:
                 self.named.setdefault(norm(row["name"]), (kind, row))
+        self.material_links = {}
+        self.material_uses = {}
+        for kind, rows in (("armor", self.armors), ("weapon", self.weapons), ("decoration", self.decorations)):
+            for row in rows:
+                for material, _, link in row["materials"]:
+                    if link:
+                        self.material_links.setdefault(norm(material), (material, link))
+                    self.material_uses.setdefault(material, []).append((kind, row["name"]))
         self.part_order = list(model.get("part_order") or [])
         self.parts = sorted({a["part"] for a in self.armors})
 

@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mhbot.answers import answer                      # noqa: E402
 from mhbot.declarative import SchemaError, load       # noqa: E402
-from mhbot.knowledge import Game, load_games          # noqa: E402
+from mhbot.knowledge import Game, load_games, norm    # noqa: E402
 from mhbot.llm import LLM, grounded                   # noqa: E402
 from mhbot.nlu import clean_context                   # noqa: E402
 
@@ -152,6 +152,32 @@ class RiseTests(unittest.TestCase):
         forged = {"intent": "build", "weapon": "banana", "rank_id": "nope", "skills": ["Not A Skill"], "entity": "x" * 50}
         self.assertEqual(clean_context(self.g, forged), {"intent": "build", "skills": []})
         self.assertEqual(clean_context(self.g, "not a dict"), {})
+
+    def test_asking_where_to_get_a_material_returns_its_link(self):
+        name, link = next(iter(self.g.material_links.values()))
+        for phrase in ("where can I farm %s", "how do I get %s", "onde conseguir %s"):
+            r = answer(self.g, phrase % name)
+            self.assertEqual(r["intent"], "material_source", phrase)
+            table = next(b["table"] for b in r["blocks"] if "table" in b)
+            self.assertEqual(table["rows"][0][0], name)
+            self.assertEqual(table["rows"][0][2]["href"], link)
+
+    def test_several_materials_in_one_question(self):
+        names = [m for m in ("Iron Ore", "Carbalite Ore") if m in {v[0] for v in self.g.material_links.values()}]
+        r = answer(self.g, "where to farm %s" % " and ".join(names))
+        table = next(b["table"] for b in r["blocks"] if "table" in b)
+        self.assertEqual({row[0] for row in table["rows"]}, set(names))
+
+    def test_item_without_a_link_says_so_instead_of_inventing_one(self):
+        item = next(i for i in self.g.items if norm(i["name"]) not in self.g.material_links and len(i["name"]) >= 6)
+        r = answer(self.g, "where to find %s" % item["name"])
+        self.assertEqual(r["intent"], "material_source")
+        self.assertIn("no link in the dataset", text_of(r))
+        self.assertNotIn("open the link", text_of(r))
+
+    def test_crafting_questions_still_list_materials_not_sources(self):
+        armor = next(a for a in self.g.armors if a["materials"])
+        self.assertEqual(answer(self.g, "what materials do I need to craft %s" % armor["name"])["intent"], "recipe")
 
     def test_unrelated_question_is_not_answered(self):
         self.assertEqual(answer(self.g, "who won the world cup")["intent"], "unknown")

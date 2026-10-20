@@ -26,6 +26,14 @@ question ──► parser ──► query ──► engine (reads only data/<gam
 
 Where the data does not contain something (for example Master Rank in the Rise dataset), the answer says so.
 
+## Where to get a material
+
+Asking where to get or farm a material ("where can I farm Carbalite Ore", "onde conseguir Gothjelly") answers with
+what the item is (from the Items table), a link to its page, and the gear it is used to craft. The link is the
+`link` the definition reads for each material (the Rise data links every material to Kiranico). The dataset does not
+record drop locations, so none are stated: the answer points to the linked page for them. An item the dataset has no
+link for is reported as having none.
+
 ## Conversations
 
 The page is a chat: you can reply to an answer with a follow-up such as "what about high rank?", "and for
