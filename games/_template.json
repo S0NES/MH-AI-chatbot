@@ -3,6 +3,7 @@
   "id": "mygame",
   "label": "My Game Name",
   "data_dir": "mygame",
+  "image": "/images/mygame.jpg",
   "scoring": {
     "keywords": {
       "attack": 3.0,

@@ -26,6 +26,20 @@ question ──► parser ──► query ──► engine (reads only data/<gam
 
 Where the data does not contain something (for example Master Rank in the Rise dataset), the answer says so.
 
+## Conversations
+
+The page is a chat: you can reply to an answer with a follow-up such as "what about high rank?", "and for
+great sword?" or "which armor has it?".
+
+- **History stays in your browser.** Conversations are kept in the browser's `localStorage`, per game, up to the
+  last 60 messages. The server never stores or logs a question, an answer or a conversation. "New chat" deletes
+  the current game's history, and clearing the site's data removes all of it.
+- **The server is stateless.** To understand a follow-up, the browser sends back a small context taken from the
+  previous answer: the intent, weapon, rank, skills and item name. The server checks each value against the
+  game's data, uses it only to fill in what the new question leaves out, and keeps nothing afterwards.
+- A follow-up is recognized by a pronoun ("it", "this"), an opener such as "what about" or "and", or a very
+  short message. Without that, a question is answered on its own.
+
 ## Databases
 
 Games are read from local JSON files under `data/<game-id>/`. The folder is not committed.
@@ -67,6 +81,7 @@ Without a model the site answers with the rules parser. To add a model, see [Lan
 |---|---|
 | `id`, `label` | identifier and display name |
 | `data_dir` | folder with the JSON files: a sub-folder of `data/`, or an absolute path |
+| `image` | picture on the game's button: an `https://` URL, or a path such as `/images/rise.jpg` for a file placed in `web/images/`. Without one the button shows the game's initial |
 | `examples` | example questions shown in the UI |
 | `ranks` | ordered ranks (`id`, `label`, `aliases`, `hunter_rank`). A number in a question ("rank 3", "HR 3") is matched against each rank's `hunter_rank` range `[min, max]`, `max` being `null` for no upper limit. Without ranges the number is the position in the list. A rank with no data in the dataset falls back to the nearest lower rank, with a note |
 | `part_order` | order in which armor parts are listed |
@@ -243,7 +258,7 @@ the web app and a temporary public link.
 games/        definition files: where each database is and how to read it
 data/         local databases, one folder per game (not committed)
 mhbot/        application code (parser, engine, optimizer, server, model manager)
-web/          single-page UI
+web/          chat UI (index.html, style.css, app.js) and optional game images
 scripts/      fetch_data.py
 tests/        unit tests
 colab/        notebook
@@ -252,6 +267,10 @@ colab/        notebook
 Tests: `python -m unittest discover -s tests`. The Rise tests are skipped when `data/rise` is missing.
 
 ## Credits and license
+
+The Monster Hunter Rise picture in `web/images/rise.jpg` is the game's cover art, taken from the
+[English Wikipedia article](https://en.wikipedia.org/wiki/File:Monster_hunter_rise_cover.jpg) where it is used as a
+non-free cover image. It belongs to Capcom. Replace it with your own file and keep the path in `games/rise.json`.
 
 The Monster Hunter Rise data comes from [Badge87/MHRiseScraperData](https://github.com/Badge87/MHRiseScraperData),
 which collects it from [mhrise.kiranico.com](https://mhrise.kiranico.com/) and the
