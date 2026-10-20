@@ -1,0 +1,10 @@
+services:
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        DATA_SOURCES: ${DATA_SOURCES:-}
+    expose:
+      - "8000"
+    restart: unless-stopped

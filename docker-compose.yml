@@ -1,0 +1,30 @@
+services:
+  llm:
+    build:
+      context: .
+      target: llm
+      args:
+        MHBOT_MODEL_REPO: ${MHBOT_MODEL_REPO:?set MHBOT_MODEL_REPO}
+        MHBOT_MODEL_FILE: ${MHBOT_MODEL_FILE:?set MHBOT_MODEL_FILE}
+        MHBOT_MODEL_REVISION: ${MHBOT_MODEL_REVISION:-}
+    environment:
+      MHBOT_N_CTX: ${MHBOT_N_CTX:-2048}
+      MHBOT_N_THREADS: ${MHBOT_N_THREADS:-}
+      MHBOT_N_GPU_LAYERS: ${MHBOT_N_GPU_LAYERS:-0}
+      MHBOT_CHAT_FORMAT: ${MHBOT_CHAT_FORMAT:-}
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        DATA_SOURCES: ${DATA_SOURCES:-}
+    environment:
+      LLM_BASE_URL: http://llm:8081/v1
+      LLM_TIMEOUT: ${LLM_TIMEOUT:-90}
+    depends_on:
+      - llm
+    expose:
+      - "8000"
+    restart: unless-stopped
