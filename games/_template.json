@@ -1,0 +1,78 @@
+{
+  "_help": "Copy to games/<id>.json (files starting with '_' are ignored). Describes where the database lives and how to read it. See the README section 'Adding a database'. Validate with: python -m mhbot.check <id>",
+  "id": "mygame",
+  "label": "My Game Name",
+  "data_dir": "mygame",
+  "scoring": {
+    "keywords": {
+      "attack": 3.0,
+      "affinity": 2.5
+    },
+    "ignore_if_contains": [],
+    "weapon_specific_weight": 1.5
+  },
+  "ranks": [
+    {
+      "id": "low",
+      "label": "Low Rank",
+      "aliases": [
+        "low",
+        "lr"
+      ]
+    }
+  ],
+  "part_order": [
+    "head",
+    "chest",
+    "arms",
+    "waist",
+    "legs"
+  ],
+  "extras_label": "Extras",
+  "notes": [
+    "Shown under build answers: caveats about this dataset (e.g. missing charms)."
+  ],
+  "ambiguous_skill_names": [],
+  "weapon_types": [
+    {
+      "value": "whatever the weapon file stores",
+      "name": "bow",
+      "aliases": []
+    }
+  ],
+  "tables": {
+    "armors": {
+      "file": "armor.json",
+      "records": "data",
+      "fields": {
+        "name": "name",
+        "part": "kind",
+        "rank": {
+          "path": "rank",
+          "type": "enum",
+          "map": {
+            "LR": "low"
+          }
+        },
+        "defense": {
+          "path": "defense.base",
+          "type": "int"
+        },
+        "slots": {
+          "path": "slots",
+          "type": "json_int_list",
+          "size": 3
+        },
+        "skills": {
+          "path": "skills",
+          "type": "name_levels",
+          "name": "skill.name",
+          "level_path": "level"
+        }
+      }
+    }
+  },
+  "examples": [
+    "What is the best armor set I can make for bow?"
+  ]
+}

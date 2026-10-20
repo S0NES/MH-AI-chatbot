@@ -1,0 +1,406 @@
+{
+  "id": "rise",
+  "label": "Monster Hunter Rise",
+  "data_dir": "rise",
+  "examples": [
+    "What is the best armor set I can make for bow, rank 3?",
+    "What does Critical Eye do?",
+    "Which armor has Weakness Exploit?",
+    "Best great sword high rank",
+    "Which decoration gives Attack Boost?"
+  ],
+  "scoring": {
+    "_help": "How 'best build' is judged: read from the database's own skill texts. A skill scores if its description or level texts contain one of these words (weight = heaviest word found). Skills naming weapon types are only used for those types. Remove this block to rank by defense only.",
+    "keywords": {
+      "attack power": 4.0,
+      "attack": 3.0,
+      "affinity": 2.5,
+      "critical": 2.0,
+      "damage": 2.0
+    },
+    "ignore_if_contains": [
+      "damage taken",
+      "element attack power",
+      "buildup",
+      "stun",
+      "exhaust",
+      "recovery",
+      "bomb",
+      "wirebug",
+      "wirefall",
+      "mount"
+    ],
+    "weapon_specific_weight": 1.5,
+    "positive_verbs": [
+      "increase",
+      "improve",
+      "boost",
+      "strengthen",
+      "enhance",
+      "extend"
+    ]
+  },
+  "ranks": [
+    {
+      "id": "low",
+      "label": "Low Rank",
+      "aliases": [
+        "low",
+        "lr",
+        "low rank",
+        "novice"
+      ]
+    },
+    {
+      "id": "high",
+      "label": "High Rank",
+      "aliases": [
+        "high",
+        "hr",
+        "high rank"
+      ]
+    }
+  ],
+  "part_order": [
+    "head",
+    "chest",
+    "arms",
+    "waist",
+    "legs"
+  ],
+  "extras_label": "Rampage skills",
+  "notes": [
+    "The Rise dataset stores which skills each armor piece grants but not how many levels, so each listed skill counts as +1 level.",
+    "Talismans/charms are not in the dataset, so builds do not include one.",
+    "This dataset has Low Rank and High Rank only (no Master Rank)."
+  ],
+  "ambiguous_skill_names": [
+    "focus",
+    "guard",
+    "fortify",
+    "constitution",
+    "steadiness",
+    "diversion",
+    "heroics",
+    "handicraft",
+    "botanist",
+    "geologist",
+    "earplugs",
+    "windproof",
+    "artillery"
+  ],
+  "weapon_types": [
+    {
+      "value": 0,
+      "name": "great sword",
+      "aliases": [
+        "gs",
+        "greatsword"
+      ]
+    },
+    {
+      "value": 1,
+      "name": "sword and shield",
+      "aliases": [
+        "sns",
+        "sword & shield",
+        "sword shield"
+      ]
+    },
+    {
+      "value": 2,
+      "name": "dual blades",
+      "aliases": [
+        "db",
+        "dual blade"
+      ]
+    },
+    {
+      "value": 3,
+      "name": "long sword",
+      "aliases": [
+        "ls",
+        "longsword"
+      ]
+    },
+    {
+      "value": 4,
+      "name": "hammer",
+      "aliases": []
+    },
+    {
+      "value": 5,
+      "name": "hunting horn",
+      "aliases": [
+        "hh",
+        "horn"
+      ],
+      "text_hints": [
+        "shockwave",
+        "horn"
+      ]
+    },
+    {
+      "value": 6,
+      "name": "lance",
+      "aliases": []
+    },
+    {
+      "value": 7,
+      "name": "gunlance",
+      "aliases": [
+        "gl",
+        "gun lance"
+      ],
+      "text_hints": [
+        "shell"
+      ]
+    },
+    {
+      "value": 8,
+      "name": "switch axe",
+      "aliases": [
+        "sa",
+        "switchaxe"
+      ],
+      "text_hints": [
+        "phial"
+      ]
+    },
+    {
+      "value": 9,
+      "name": "charge blade",
+      "aliases": [
+        "cb",
+        "chargeblade"
+      ],
+      "text_hints": [
+        "phial"
+      ]
+    },
+    {
+      "value": 10,
+      "name": "insect glaive",
+      "aliases": [
+        "ig",
+        "glaive"
+      ]
+    },
+    {
+      "value": 11,
+      "name": "bow",
+      "aliases": [
+        "bows",
+        "archer",
+        "archers",
+        "archery"
+      ],
+      "text_hints": [
+        "arrow",
+        "coating"
+      ]
+    },
+    {
+      "value": 12,
+      "name": "heavy bowgun",
+      "aliases": [
+        "hbg",
+        "heavy bow gun"
+      ],
+      "text_hints": [
+        "ammo",
+        "recoil",
+        "bowgun"
+      ]
+    },
+    {
+      "value": 13,
+      "name": "light bowgun",
+      "aliases": [
+        "lbg",
+        "light bow gun"
+      ],
+      "text_hints": [
+        "ammo",
+        "recoil",
+        "bowgun"
+      ]
+    }
+  ],
+  "tables": {
+    "skills": {
+      "file": "Skills.json",
+      "records": "data",
+      "dedupe_by": "name",
+      "prefer_longest": "levels",
+      "fields": {
+        "name": "name",
+        "description": "description",
+        "levels": {
+          "type": "keys_regex_list",
+          "pattern": "lv\\d+"
+        }
+      }
+    },
+    "armors": {
+      "file": "Armors.json",
+      "records": "data",
+      "fields": {
+        "name": "name",
+        "part": "part",
+        "rank": {
+          "path": "rank",
+          "type": "enum",
+          "map": {
+            "0": "low",
+            "1": "high"
+          }
+        },
+        "rarity": {
+          "path": "rare",
+          "type": "int"
+        },
+        "defense": {
+          "path": "defVal",
+          "type": "int"
+        },
+        "res.fire": {
+          "path": "fireRegVal",
+          "type": "int"
+        },
+        "res.water": {
+          "path": "waterRegVal",
+          "type": "int"
+        },
+        "res.ice": {
+          "path": "iceRegVal",
+          "type": "int"
+        },
+        "res.thunder": {
+          "path": "thunderRegVal",
+          "type": "int"
+        },
+        "res.dragon": {
+          "path": "dragonRegVal",
+          "type": "int"
+        },
+        "slots": {
+          "path": "decorationsNumList",
+          "type": "json_int_list",
+          "size": 3
+        },
+        "skills": {
+          "path": "skills",
+          "type": "name_levels",
+          "name": "skill.name",
+          "level": 1
+        },
+        "materials": {
+          "path": "forging_materials",
+          "type": "materials",
+          "item": "item.name",
+          "amount": "amount",
+          "default": []
+        },
+        "set": "series"
+      }
+    },
+    "decorations": {
+      "file": "Decorations.json",
+      "records": "data",
+      "fields": {
+        "name": "name",
+        "size": {
+          "path": "name",
+          "type": "tail_int",
+          "default": 1
+        },
+        "skills": {
+          "path": "skills",
+          "type": "name_levels",
+          "name": "skill.name",
+          "level": 1
+        },
+        "materials": {
+          "path": "materials",
+          "type": "materials",
+          "item": "item.name",
+          "amount": "amount",
+          "default": []
+        }
+      }
+    },
+    "weapons": {
+      "file": "Weapons.json",
+      "records": "data",
+      "fields": {
+        "name": "name",
+        "type": {
+          "path": "weapon_type",
+          "type": "weapon_type"
+        },
+        "rarity": {
+          "path": "rareType",
+          "type": "int"
+        },
+        "rank": {
+          "path": "rareType",
+          "type": "range_map",
+          "ranges": {
+            "low": [
+              0,
+              2
+            ],
+            "high": [
+              3,
+              6
+            ]
+          }
+        },
+        "attack": {
+          "path": "atk",
+          "type": "int"
+        },
+        "affinity": {
+          "path": "criticalRate",
+          "type": "int"
+        },
+        "defense_bonus": {
+          "path": "defBonus",
+          "type": "int"
+        },
+        "extras": {
+          "path": "rampage_skills",
+          "type": "list_str",
+          "each": "skill.name",
+          "default": []
+        },
+        "materials": {
+          "path": "forging_materials",
+          "type": "materials",
+          "item": "item.name",
+          "amount": "amount",
+          "default": []
+        }
+      }
+    },
+    "items": {
+      "file": "Items.json",
+      "records": "data",
+      "fields": {
+        "name": "name",
+        "description": "description",
+        "buy": {
+          "path": "buyPrice",
+          "type": "int",
+          "default": 0
+        },
+        "sell": {
+          "path": "sellPrice",
+          "type": "int",
+          "default": 0
+        }
+      }
+    }
+  }
+}
