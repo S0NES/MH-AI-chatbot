@@ -205,8 +205,11 @@ def answer_parsed(game, parsed):
     else:
         resp = answer_unknown(game, parsed["q"])
     resp["parsed"] = {k: parsed[k] for k in ("intent", "weapon", "rank_id", "skills")}
+    resp["context"] = None if resp["intent"] == "unknown" else {
+        "intent": parsed["intent"], "weapon": parsed["weapon"], "rank_id": parsed["rank_id"],
+        "skills": parsed["skills"], "entity": parsed["entity"]["row"]["name"] if parsed["entity"] else None}
     return resp
 
 
-def answer(game, question):
-    return answer_parsed(game, nlu.parse(game, question))
+def answer(game, question, context=None):
+    return answer_parsed(game, nlu.parse(game, question, context))

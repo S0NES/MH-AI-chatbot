@@ -11,7 +11,16 @@ from .llm import LLM
 
 WEB = Path(__file__).resolve().parents[1] / "web"
 MAX_QUESTION = 400
-TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8"}
+TYPES = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+}
 
 
 class App:
@@ -20,7 +29,8 @@ class App:
         self.llm = LLM()
         self.gate = threading.Semaphore(int(os.environ.get("LLM_CONCURRENCY", 1)))
 
-    def ask(self, game_id, question):
+    def ask(self, game_id, question, context=None):
+        """Answer one question. The server keeps no conversation: `context` comes from the client with each request."""
         game = self.games.get(game_id)
         if game is None:
             return 400, {"error": "Pick an available game first."}
@@ -30,21 +40,21 @@ class App:
         resp, engine = None, "rules"
         if self.llm.enabled and self.gate.acquire(timeout=30):
             try:
-                parsed = self.llm.understand(game, question)
+                parsed = self.llm.understand(game, question, context)
                 if parsed:
                     resp, engine = answer_parsed(game, parsed), "llm+rules"
                     if resp["intent"] == "unknown":
-                        alt = answer(game, question)
+                        alt = answer(game, question, context)
                         if alt["intent"] != "unknown":
                             resp, engine = alt, "rules"
                 if resp is None:
-                    resp = answer(game, question)
+                    resp = answer(game, question, context)
                 if self.llm.narrate_enabled and resp["intent"] not in ("unknown", "clarify"):
                     resp["ai"] = self.llm.narrate(game, question, resp)
             finally:
                 self.gate.release()
         if resp is None:
-            resp = answer(game, question)
+            resp = answer(game, question, context)
         resp["engine"] = engine
         return 200, resp
 
@@ -56,6 +66,7 @@ class Handler(BaseHTTPRequestHandler):
         data = json.dumps(payload, ensure_ascii=False).encode()
         self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
@@ -83,7 +94,7 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(min(length, 8192)) or b"{}")
         except (ValueError, TypeError):
             return self._json(400, {"error": "bad request"})
-        code, payload = self.app.ask(body.get("game"), body.get("question"))
+        code, payload = self.app.ask(body.get("game"), body.get("question"), body.get("context"))
         self._json(code, payload)
 
     def log_message(self, fmt, *args):

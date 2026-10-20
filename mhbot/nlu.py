@@ -11,7 +11,14 @@ BEST_WORDS = {"best", "good", "top", "strongest", "optimal", "recommend", "recom
 SKILL_Q_WORDS = {"what", "does", "do", "explain", "effect", "effects", "work", "works", "mean", "info", "about", "describe"}
 FIND_WORDS = {"which", "what", "has", "have", "with", "gives", "give", "list", "show", "find", "contains", "providing", "grants"}
 PART_WORDS = {"piece", "pieces", "head", "chest", "arms", "waist", "legs", "helmet", "helmets", "helm", "helms", "gloves", "boots", "greaves", "vambraces"}
-NUMBER_RANK = re.compile(r"\b(?:hr|hunter rank|rank)\s*(\d+)\b|\b(\d+)(?:st|nd|rd|th)?\s*rank\b")
+CARRY_INTENTS = {"build", "best_weapon", "armor_with_skill", "skill_info", "entity_info"}
+PRONOUNS = {"it", "its", "this", "that", "these", "those", "them", "same"}
+FOLLOW_UP_OPENERS = ("what about", "how about", "and ", "also ", "now ", "same ", "then ")
+FILLER = {"what", "about", "how", "and", "for", "also", "now", "then", "the", "a", "an", "with", "in", "at", "on", "of",
+          "to", "do", "does", "is", "are", "same", "please", "i", "me", "my", "can", "you", "use", "if", "instead",
+          "only", "just", "too",
+          "rank", "hr", "hunter", "low", "high", "master", "lr", "mr", "novice", "it", "this", "that"}
+NUMBER_RANK =re.compile(r"\b(?:hr|hunter rank|rank)\s*(\d+)\b|\b(\d+)(?:st|nd|rd|th)?\s*rank\b")
 
 
 def find_weapon(game, q):
@@ -109,34 +116,80 @@ def find_entity(game, q):
     return None
 
 
-def parse(game, question):
+def classify(words, weapon, skills, entity):
+    if skills and words & DECO_WORDS:
+        return "deco_for_skill"
+    if entity and words & RECIPE_WORDS:
+        return "recipe"
+    if words & ARMOR_WORDS and (weapon or words & BEST_WORDS or "build" in words) and not (skills and words & FIND_WORDS and not weapon):
+        return "build"
+    if skills and words & (ARMOR_WORDS | PART_WORDS):
+        return "armor_with_skill"
+    if weapon and (words & BEST_WORDS or "weapon" in words or "weapons" in words):
+        return "best_weapon"
+    if skills and (words & SKILL_Q_WORDS or len(words) <= 3 or "skill" in words):
+        return "skill_info"
+    if entity:
+        return "entity_info"
+    if weapon:
+        return "best_weapon"
+    if skills:
+        return "skill_info"
+    return "unknown"
+
+
+def clean_context(game, raw):
+    """Keeps only values that exist in the game's data from a context sent by the client."""
+    if not isinstance(raw, dict):
+        return {}
+    ctx = {}
+    if raw.get("intent") in CARRY_INTENTS:
+        ctx["intent"] = raw["intent"]
+    if raw.get("weapon") in [w["name"] for w in game.weapon_types]:
+        ctx["weapon"] = raw["weapon"]
+    if raw.get("rank_id") in [r["id"] for r in game.ranks]:
+        ctx["rank_id"] = raw["rank_id"]
+    if isinstance(raw.get("skills"), list):
+        ctx["skills"] = [s for s in raw["skills"][:5] if s in game.skills]
+    if isinstance(raw.get("entity"), str) and norm(raw["entity"]) in game.named:
+        ctx["entity"] = raw["entity"]
+    return ctx
+
+
+def _only_changes_slots(game, words, skills, entity):
+    """True when the question holds nothing but a weapon, a rank, a skill or filler words."""
+    covered = set()
+    for wt in game.weapon_types:
+        for name in [wt["name"]] + wt["aliases"]:
+            covered |= set(norm(name).split())
+    for skill in skills:
+        covered |= set(norm(skill).split())
+    if entity:
+        covered |= set(norm(entity["row"]["name"]).split())
+    return all(w in FILLER or w in covered or w.isdigit() for w in words)
+
+
+def parse(game, question, context=None):
+    """Parse a question. `context` is the structured result of the previous answer, used to fill what a follow-up leaves out."""
     q = norm(question)
     words = set(q.split())
     weapon = find_weapon(game, q)
     rank_id, rank_note = find_rank(game, q)
     skills = find_skills(game, q)
     entity = find_entity(game, q)
-    out = {"q": q, "weapon": weapon, "rank_id": rank_id, "rank_note": rank_note, "skills": skills, "entity": entity}
 
-    if skills and words & DECO_WORDS:
-        intent = "deco_for_skill"
-    elif entity and words & RECIPE_WORDS:
-        intent = "recipe"
-    elif words & ARMOR_WORDS and (weapon or words & BEST_WORDS or "build" in words) and not (skills and words & FIND_WORDS and not weapon):
-        intent = "build"
-    elif skills and words & (ARMOR_WORDS | PART_WORDS):
-        intent = "armor_with_skill"
-    elif weapon and (words & BEST_WORDS or "weapon" in words or "weapons" in words):
-        intent = "best_weapon"
-    elif skills and (words & SKILL_Q_WORDS or len(words) <= 3 or "skill" in words):
-        intent = "skill_info"
-    elif entity:
-        intent = "entity_info"
-    elif weapon:
-        intent = "best_weapon"
-    elif skills:
-        intent = "skill_info"
-    else:
-        intent = "unknown"
-    out["intent"] = intent
-    return out
+    ctx = clean_context(game, context)
+    follow_up = bool(ctx) and (bool(words & PRONOUNS) or q.startswith(FOLLOW_UP_OPENERS) or len(words) <= 4)
+    if follow_up:
+        weapon = weapon or ctx.get("weapon")
+        rank_id = rank_id or ctx.get("rank_id")
+        skills = skills or list(ctx.get("skills", []))
+        if not entity and ctx.get("entity"):
+            kind, row = game.named[norm(ctx["entity"])]
+            entity = {"kind": kind, "row": row}
+
+    intent = classify(words, weapon, skills, entity)
+    if follow_up and ctx.get("intent") and (intent == "unknown" or _only_changes_slots(game, words, skills, entity)):
+        intent = ctx["intent"]
+    return {"q": q, "weapon": weapon, "rank_id": rank_id, "rank_note": rank_note, "skills": skills,
+            "entity": entity, "intent": intent, "follow_up": follow_up}

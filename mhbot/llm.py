@@ -62,7 +62,7 @@ class LLM:
         with urllib.request.urlopen(req, timeout=self.timeout) as resp:
             return json.load(resp)["choices"][0]["message"]["content"]
 
-    def understand(self, game, question):
+    def understand(self, game, question, context=None):
         """Returns a parsed-question dict (same shape as nlu.parse) or None if the LLM couldn't help."""
         system = self.understand_system(game)
         try:
@@ -73,7 +73,7 @@ class LLM:
         if not isinstance(data, dict) or data.get("intent") not in INTENTS:
             return None
 
-        base = nlu.parse(game, question)
+        base = nlu.parse(game, question, context)
         weapon = base["weapon"] or nlu.find_weapon(game, norm(str(data.get("weapon") or "")))
         rank_id, rank_note = base["rank_id"], base["rank_note"]
         raw_rank = str(data.get("rank") or "")

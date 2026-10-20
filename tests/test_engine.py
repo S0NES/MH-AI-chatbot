@@ -11,6 +11,7 @@ from mhbot.answers import answer                      # noqa: E402
 from mhbot.declarative import SchemaError, load       # noqa: E402
 from mhbot.knowledge import Game, load_games          # noqa: E402
 from mhbot.llm import LLM, grounded                   # noqa: E402
+from mhbot.nlu import clean_context                   # noqa: E402
 
 RISE_AVAILABLE = (Path(__file__).resolve().parents[1] / "data" / "rise" / "Armors.json").exists()
 
@@ -120,6 +121,37 @@ class RiseTests(unittest.TestCase):
         for name, amount in expected.items():
             self.assertGreaterEqual(listed[name], amount)
         self.assertTrue(all(row[3]["href"].startswith("https://") for row in table["rows"]))
+
+    def test_follow_up_questions_use_the_previous_answer(self):
+        def turn(question, context=None):
+            response = answer(self.g, question, context)
+            return response, response["context"] or context
+
+        first, ctx = turn("best armor set for bow rank 3")
+        second, ctx = turn("what about high rank?", ctx)
+        self.assertEqual((second["intent"], second["parsed"]["weapon"], second["parsed"]["rank_id"]), ("build", "bow", "high"))
+        third, ctx = turn("and for great sword?", ctx)
+        self.assertEqual((third["parsed"]["weapon"], third["parsed"]["rank_id"]), ("great sword", "high"))
+
+        _, ctx = turn("what does critical eye do")
+        fourth, ctx = turn("which armor has it?", ctx)
+        self.assertEqual((fourth["intent"], fourth["parsed"]["skills"]), ("armor_with_skill", ["Critical Eye"]))
+        fifth, _ = turn("only high rank", ctx)
+        self.assertEqual((fifth["intent"], fifth["parsed"]["rank_id"]), ("armor_with_skill", "high"))
+
+    def test_weapon_question_can_be_answered_in_the_next_message(self):
+        asked = answer(self.g, "best armor set")
+        self.assertEqual(asked["intent"], "clarify")
+        reply = answer(self.g, "bow", asked["context"])
+        self.assertEqual((reply["intent"], reply["parsed"]["weapon"]), ("build", "bow"))
+
+    def test_without_context_a_follow_up_is_not_guessed(self):
+        self.assertEqual(answer(self.g, "what about high rank?")["intent"], "unknown")
+
+    def test_context_from_the_client_is_validated_against_the_data(self):
+        forged = {"intent": "build", "weapon": "banana", "rank_id": "nope", "skills": ["Not A Skill"], "entity": "x" * 50}
+        self.assertEqual(clean_context(self.g, forged), {"intent": "build", "skills": []})
+        self.assertEqual(clean_context(self.g, "not a dict"), {})
 
     def test_unrelated_question_is_not_answered(self):
         self.assertEqual(answer(self.g, "who won the world cup")["intent"], "unknown")

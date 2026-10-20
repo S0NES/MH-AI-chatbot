@@ -133,7 +133,7 @@ def load_games(games_dir=None, repo=None):
                             "reason": "definition file is not valid JSON or has no 'id'"})
             continue
         entry = {"id": cfg["id"], "label": cfg.get("label", cfg["id"]), "available": False, "reason": "",
-                 "examples": cfg.get("examples", [])}
+                 "examples": cfg.get("examples", []), "image": cfg.get("image", "")}
         catalog.append(entry)
         data_dir = resolve_data_dir(cfg, repo)
         if not cfg.get("tables"):
