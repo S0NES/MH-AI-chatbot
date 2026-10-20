@@ -18,6 +18,21 @@
       "aliases": [
         "low",
         "lr"
+      ],
+      "hunter_rank": [
+        1,
+        4
+      ]
+    },
+    {
+      "id": "high",
+      "label": "High Rank",
+      "aliases": [
+        "high"
+      ],
+      "hunter_rank": [
+        5,
+        null
       ]
     }
   ],

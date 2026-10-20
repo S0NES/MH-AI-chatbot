@@ -44,6 +44,10 @@
     {
       "id": "low",
       "label": "Low Rank",
+      "hunter_rank": [
+        1,
+        4
+      ],
       "aliases": [
         "low",
         "lr",
@@ -54,10 +58,26 @@
     {
       "id": "high",
       "label": "High Rank",
+      "hunter_rank": [
+        5,
+        8
+      ],
       "aliases": [
         "high",
-        "hr",
         "high rank"
+      ]
+    },
+    {
+      "id": "master",
+      "label": "Master Rank",
+      "hunter_rank": [
+        9,
+        null
+      ],
+      "aliases": [
+        "master",
+        "mr",
+        "master rank"
       ]
     }
   ],
@@ -72,7 +92,7 @@
   "notes": [
     "The Rise dataset stores which skills each armor piece grants but not how many levels, so each listed skill counts as +1 level.",
     "Talismans/charms are not in the dataset, so builds do not include one.",
-    "This dataset has Low Rank and High Rank only (no Master Rank)."
+    "This dataset has Low Rank and High Rank only; Master Rank (the DLC rank) is not included."
   ],
   "ambiguous_skill_names": [
     "focus",

@@ -11,7 +11,7 @@ BEST_WORDS = {"best", "good", "top", "strongest", "optimal", "recommend", "recom
 SKILL_Q_WORDS = {"what", "does", "do", "explain", "effect", "effects", "work", "works", "mean", "info", "about", "describe"}
 FIND_WORDS = {"which", "what", "has", "have", "with", "gives", "give", "list", "show", "find", "contains", "providing", "grants"}
 PART_WORDS = {"piece", "pieces", "head", "chest", "arms", "waist", "legs", "helmet", "helmets", "helm", "helms", "gloves", "boots", "greaves", "vambraces"}
-RANK_ORDINAL = re.compile(r"\brank\s*(\d+)\b|\b(\d+)(?:st|nd|rd|th)?\s*rank\b")
+NUMBER_RANK = re.compile(r"\b(?:hr|hunter rank|rank)\s*(\d+)\b|\b(\d+)(?:st|nd|rd|th)?\s*rank\b")
 
 
 def find_weapon(game, q):
@@ -25,24 +25,40 @@ def find_weapon(game, q):
     return best[1] if best else None
 
 
+def _usable_rank(game, rank, note):
+    """The rank itself when the dataset has data for it, otherwise the nearest lower rank that has."""
+    if game.rank_has_data(rank["id"]):
+        return rank["id"], note
+    index = game.ranks.index(rank)
+    for lower in reversed(game.ranks[:index]):
+        if game.rank_has_data(lower["id"]):
+            return lower["id"], "%s is not in this dataset, so I used %s." % (game.rank_text(rank["id"]), game.rank_text(lower["id"]))
+    return rank["id"], note
+
+
 def find_rank(game, q):
-    """Returns (rank_id or None, note or None). 'rank 3' means the 3rd rank of the game."""
-    padded = " %s " % q
-    m = RANK_ORDINAL.search(q)
+    """Returns (rank_id or None, note or None).
+
+    A number ("rank 3", "HR 3") is a hunter rank and is matched against each rank's `hunter_rank` range.
+    Games whose ranks have no ranges treat the number as the position in the ranks list.
+    """
+    m = NUMBER_RANK.search(q)
     if m:
         n = int(m.group(1) or m.group(2))
+        if any(r.get("hunter_rank") for r in game.ranks):
+            rank = game.rank_for_number(n)
+            if rank is None:
+                return None, "%d is not a valid rank for %s." % (n, game.label)
+            return _usable_rank(game, rank, "HR %d is %s." % (n, game.rank_text(rank["id"])))
         if 1 <= n <= len(game.ranks):
             return game.ranks[n - 1]["id"], None
         top = game.ranks[-1]
-        return top["id"], "%s only has %d rank(s) in this dataset (up to %s), so I used %s." % (
-            game.label, len(game.ranks), top["label"], top["label"])
+        return top["id"], "%s only has %d ranks, so I used %s." % (game.label, len(game.ranks), top["label"])
+    padded = " %s " % q
     for r in reversed(game.ranks):
         for alias in [r["label"]] + r["aliases"]:
             if " %s " % norm(alias) in padded:
-                return r["id"], None
-    if re.search(r"\bmaster\b|\bmr\b", q):
-        top = game.ranks[-1]
-        return top["id"], "No Master Rank data for %s here, so I used %s." % (game.label, top["label"])
+                return _usable_rank(game, r, None)
     return None, None
 
 

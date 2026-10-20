@@ -68,7 +68,7 @@ Without a model the site answers with the rules parser. To add a model, see [Lan
 | `id`, `label` | identifier and display name |
 | `data_dir` | folder with the JSON files: a sub-folder of `data/`, or an absolute path |
 | `examples` | example questions shown in the UI |
-| `ranks` | ordered ranks (`id`, `label`, `aliases`). "rank 3" means the third entry |
+| `ranks` | ordered ranks (`id`, `label`, `aliases`, `hunter_rank`). A number in a question ("rank 3", "HR 3") is matched against each rank's `hunter_rank` range `[min, max]`, `max` being `null` for no upper limit. Without ranges the number is the position in the list. A rank with no data in the dataset falls back to the nearest lower rank, with a note |
 | `part_order` | order in which armor parts are listed |
 | `weapon_types` | `value` (as stored in the data), `name`, `aliases`, optional `text_hints` |
 | `extras_label` | display name for weapon extras (for example rampage skills) |

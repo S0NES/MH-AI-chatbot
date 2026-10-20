@@ -42,7 +42,24 @@ class RiseTests(unittest.TestCase):
         pieces = [row[1] for row in table["rows"]]
         self.assertEqual(len(pieces), 5)
         self.assertTrue(set(pieces) <= {a["name"] for a in self.g.armors})
-        self.assertIn("only has 2 rank", text_of(r))
+        self.assertEqual(r["parsed"]["rank_id"], "low")
+        self.assertTrue(all(a["rank"] == "low" for a in self.g.armors if a["name"] in pieces))
+
+    def test_rank_numbers_are_hunter_ranks(self):
+        expected = {"rank 1": "low", "rank 3": "low", "hr 4": "low", "rank 5": "high", "hr 8": "high",
+                    "high rank": "high", "low rank": "low"}
+        for phrase, rank in expected.items():
+            parsed = answer(self.g, "best armor for bow " + phrase)["parsed"]
+            self.assertEqual(parsed["rank_id"], rank, phrase)
+
+    def test_rank_without_data_falls_back_with_a_note(self):
+        for phrase in ("rank 12", "master rank"):
+            r = answer(self.g, "best armor for bow " + phrase)
+            self.assertEqual(r["parsed"]["rank_id"], "high", phrase)
+            self.assertIn("not in this dataset", text_of(r))
+
+    def test_no_rank_defaults_to_highest_rank_with_data(self):
+        self.assertEqual(answer(self.g, "best armor for bow")["blocks"][0]["h"].split()[1:3], ["High", "Rank"])
 
     def test_common_questions_are_understood(self):
         for q in ("best armor set for heavy bowgun low rank", "which armor has critical eye", "best long sword"):

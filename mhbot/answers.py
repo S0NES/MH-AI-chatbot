@@ -10,8 +10,7 @@ def _mats(mats):
 
 
 def _rank_label(game, rank_id):
-    r = game.rank_by_id(rank_id)
-    return r["label"] if r else rank_id
+    return game.rank_text(rank_id)
 
 
 def _slots_text(slots):
@@ -34,7 +33,7 @@ def answer_build(game, parsed):
     blocks = []
     if parsed["rank_note"]:
         blocks.append({"note": parsed["rank_note"]})
-    rank_id = parsed["rank_id"] or game.ranks[-1]["id"]
+    rank_id = parsed["rank_id"] or next((r["id"] for r in reversed(game.ranks) if game.rank_has_data(r["id"])), game.ranks[-1]["id"])
     if not parsed["rank_id"]:
         blocks.append({"note": "No rank given, so I used %s." % _rank_label(game, rank_id)})
     builds = optimize(game, parsed["weapon"], rank_id, parsed["skills"])

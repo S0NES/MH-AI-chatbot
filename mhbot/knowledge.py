@@ -33,6 +33,27 @@ class Game:
     def rank_by_id(self, rank_id):
         return next((r for r in self.ranks if r["id"] == rank_id), None)
 
+    def rank_for_number(self, number):
+        """The rank whose `hunter_rank` range [min, max] contains the number (max null means no upper limit)."""
+        for r in self.ranks:
+            bounds = r.get("hunter_rank")
+            if bounds and number >= bounds[0] and (bounds[1] is None or number <= bounds[1]):
+                return r
+        return None
+
+    def rank_has_data(self, rank_id):
+        return any(a["rank"] == rank_id for a in self.armors) or any(w["rank"] == rank_id for w in self.weapons)
+
+    def rank_text(self, rank_id):
+        r = self.rank_by_id(rank_id)
+        if r is None:
+            return rank_id
+        bounds = r.get("hunter_rank")
+        if not bounds:
+            return r["label"]
+        span = "HR %d+" % bounds[0] if bounds[1] is None else "HR %d-%d" % (bounds[0], bounds[1])
+        return "%s (%s)" % (r["label"], span)
+
     def _weapon_mentions(self, text):
         """Weapon types named in a text, by name, alias, shared last word or text_hints."""
         found = set()
