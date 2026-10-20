@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MH AI Chatbot</title>
+<style>
+  :root { --bg:#f6f4ef; --card:#fff; --ink:#1d1b16; --muted:#6d6759; --line:#e3ded2; --accent:#a8431f; --accent-ink:#fff; --note:#fff6df; --note-line:#ecd9a0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#16140f; --card:#211e17; --ink:#f0ece1; --muted:#a39d8c; --line:#38342a; --accent:#e0703f; --accent-ink:#1a0d06; --note:#2e2713; --note-line:#5a4c1c; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 820px; margin: 0 auto; padding: 24px 16px 96px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .bar { display:flex; gap:8px; flex-wrap:wrap; position:sticky; top:0; background:var(--bg); padding:10px 0; z-index:2; }
+  select, input, button { font: inherit; color: inherit; }
+  select, input { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  select { flex: 0 0 auto; min-width: 220px; max-width: 100%; }
+  input { flex: 1 1 260px; }
+  input:disabled, button:disabled { opacity:.5; cursor:not-allowed; }
+  button { background:var(--accent); color:var(--accent-ink); border:0; border-radius:8px; padding:10px 18px; font-weight:600; cursor:pointer; }
+  button.chip { background:transparent; color:var(--ink); border:1px solid var(--line); font-weight:400; padding:6px 12px; border-radius:999px; font-size:.875rem; }
+  button.chip:hover:not(:disabled) { border-color:var(--accent); }
+  .chips { display:flex; gap:8px; flex-wrap:wrap; margin: 4px 0 16px; }
+  .msg { margin: 16px 0; }
+  .q { font-weight:600; }
+  .a { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-top:6px; overflow-x:auto; }
+  .a h3 { margin:0 0 8px; font-size:1.05rem; } .a h3:not(:first-child) { margin-top:16px; }
+  .a p { margin: 8px 0; } .a ul { margin: 8px 0; padding-left: 20px; }
+  .ai { border-left:3px solid var(--accent); padding-left:10px; margin: 0 0 12px; }
+  .note { background:var(--note); border:1px solid var(--note-line); border-radius:8px; padding:6px 10px; font-size:.875rem; margin:8px 0; }
+  table { border-collapse:collapse; width:100%; margin:8px 0; font-size:.9rem; }
+  th, td { text-align:left; padding:6px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; }
+  .meta { color:var(--muted); font-size:.75rem; margin-top:8px; }
+  .hint { color:var(--muted); font-size:.875rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>MH AI Chatbot</h1>
+  <p class="sub">Ask about armor, weapons, skills and decorations. Answers come only from the game database you pick.</p>
+
+  <form class="bar" id="form">
+    <select id="game" aria-label="Game" required></select>
+    <input id="question" type="text" maxlength="400" autocomplete="off" placeholder="Choose a game first..." aria-label="Question" disabled>
+    <button id="send" disabled>Ask</button>
+  </form>
+  <div class="chips" id="chips"></div>
+  <div id="log" aria-live="polite"></div>
+  <p class="hint" id="status"></p>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const gameSel = $("game"), qIn = $("question"), send = $("send"), log = $("log"), chips = $("chips");
+let games = [];
+
+function el(tag, text, cls) { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; }
+
+function renderBlocks(blocks) {
+  const box = el("div");
+  for (const b of blocks) {
+    if (b.h) box.append(el("h3", b.h));
+    else if (b.p) box.append(el("p", b.p));
+    else if (b.note) box.append(el("div", b.note, "note"));
+    else if (b.list) { const ul = el("ul"); b.list.forEach((t) => ul.append(el("li", t))); box.append(ul); }
+    else if (b.table) {
+      const t = el("table"), head = el("tr");
+      b.table.head.forEach((h) => head.append(el("th", h)));
+      t.append(head);
+      b.table.rows.forEach((r) => { const tr = el("tr"); r.forEach((c) => tr.append(el("td", c))); t.append(tr); });
+      box.append(t);
+    }
+  }
+  return box;
+}
+
+function setChips(list) {
+  chips.replaceChildren();
+  list.slice(0, 8).forEach((text) => {
+    const c = el("button", text, "chip"); c.type = "button"; c.disabled = !gameSel.value;
+    c.onclick = () => { qIn.value = text; $("form").requestSubmit(); };
+    chips.append(c);
+  });
+}
+
+function syncGate() {
+  const ok = !!gameSel.value;
+  qIn.disabled = send.disabled = !ok;
+  qIn.placeholder = ok ? "Ask something about this game..." : "Choose a game first...";
+  const game = games.find((g) => g.id === gameSel.value);
+  setChips(game ? game.examples || [] : []);
+  try { if (ok) localStorage.setItem("game", gameSel.value); } catch (e) {}
+}
+
+async function init() {
+  const res = await fetch("/api/games"); const data = await res.json();
+  games = data.games;
+  gameSel.append(new Option("Select a game...", ""));
+  data.games.forEach((g) => {
+    const o = new Option(g.label + (g.available ? "" : " (not available: " + g.reason + ")"), g.id);
+    o.disabled = !g.available; gameSel.append(o);
+  });
+  let saved = ""; try { saved = localStorage.getItem("game") || ""; } catch (e) {}
+  if ([...gameSel.options].some((o) => o.value === saved && !o.disabled)) gameSel.value = saved;
+  $("status").textContent = data.llm ? "AI model connected." : "No AI model connected - using the built-in rules engine.";
+  syncGate();
+}
+
+gameSel.onchange = syncGate;
+
+$("form").onsubmit = async (e) => {
+  e.preventDefault();
+  const question = qIn.value.trim(); if (!question || !gameSel.value) return;
+  qIn.value = ""; send.disabled = true;
+  const msg = el("div", undefined, "msg"); msg.append(el("div", question, "q"));
+  const a = el("div", "Thinking...", "a"); msg.append(a); log.prepend(msg);
+  try {
+    const res = await fetch("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ game: gameSel.value, question }) });
+    const data = await res.json();
+    a.replaceChildren();
+    if (data.error) { a.append(el("p", data.error)); }
+    else {
+      if (data.ai) a.append(el("p", data.ai, "ai"));
+      a.append(renderBlocks(data.blocks));
+      a.append(el("div", "engine: " + data.engine, "meta"));
+      if (data.suggestions && data.suggestions.length) setChips(data.suggestions);
+    }
+  } catch (err) { a.replaceChildren(el("p", "Could not reach the server.")); }
+  send.disabled = false; qIn.focus();
+};
+
+init();
+</script>
+</body>
+</html>
