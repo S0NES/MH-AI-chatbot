@@ -1,0 +1,5 @@
+# Model server dependencies. The web app itself needs none.
+--prefer-binary
+--extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+llama-cpp-python[server]>=0.3
+huggingface_hub>=0.24
