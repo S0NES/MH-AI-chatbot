@@ -3,11 +3,30 @@ import json
 import os
 import re
 import urllib.request
+from pathlib import Path
+from string import Template
 
 from . import nlu
 from .knowledge import norm
 
 INTENTS = ["build", "best_weapon", "skill_info", "armor_with_skill", "deco_for_skill", "recipe", "entity_info", "unknown"]
+PROMPTS = Path(__file__).resolve().parents[1] / "prompts"
+
+
+def load_prompt(name):
+    """Prompt template from prompts/<name>.txt (folder overridable with MHBOT_PROMPTS_DIR)."""
+    path = Path(os.environ.get("MHBOT_PROMPTS_DIR") or PROMPTS) / (name + ".txt")
+    try:
+        return Template(path.read_text(encoding="utf-8"))
+    except OSError:
+        raise SystemExit("prompt file not found: %s" % path)
+
+
+def skill_listing(game, with_descriptions):
+    """Skill names from the dataset, one per line; with descriptions when the model has the context for it."""
+    if with_descriptions:
+        return "\n".join("%s: %s" % (n, s["description"]) for n, s in game.skills.items())
+    return "\n".join(game.skills)
 
 
 class LLM:
@@ -17,10 +36,21 @@ class LLM:
         self.api_key = api_key or os.environ.get("LLM_API_KEY", "none")
         self.timeout = float(timeout or os.environ.get("LLM_TIMEOUT", 60))
         self.narrate_enabled = (os.environ.get("LLM_NARRATE", "0") == "1") if narrate is None else narrate
+        self.skill_descriptions = os.environ.get("LLM_SKILL_DESCRIPTIONS", "0") == "1"
+        if self.enabled:
+            self.understand_prompt = load_prompt("understand")
+            self.narrate_prompt = load_prompt("narrate")
 
     @property
     def enabled(self):
         return bool(self.base_url)
+
+    def understand_system(self, game):
+        return self.understand_prompt.safe_substitute(
+            game=game.label, intents=", ".join(INTENTS),
+            weapons=", ".join(w["name"] for w in game.weapon_types),
+            ranks=", ".join("%s (%s)" % (r["id"], game.rank_text(r["id"])) for r in game.ranks),
+            skills=skill_listing(game, self.skill_descriptions))
 
     def _chat(self, messages, max_tokens, json_mode=False):
         body = {"model": self.model, "messages": messages, "max_tokens": max_tokens, "temperature": 0.1}
@@ -34,15 +64,7 @@ class LLM:
 
     def understand(self, game, question):
         """Returns a parsed-question dict (same shape as nlu.parse) or None if the LLM couldn't help."""
-        system = (
-            "You convert a question about %s into JSON. Reply with JSON only, keys: "
-            "intent (one of %s), weapon (one of %s or null), rank (one of %s or null; a number N means the Nth rank), "
-            "skills (list of skill names mentioned), name (an armor/weapon/decoration/item name mentioned, or null). "
-            "intents: build = best armor set for a weapon; best_weapon = strongest weapons of a type; skill_info = what a skill does; "
-            "armor_with_skill = which armor has a skill; deco_for_skill = which decoration gives a skill; "
-            "recipe = materials to craft something; entity_info = details about a named piece of gear or item; "
-            "unknown = anything not about this game's data."
-            % (game.label, INTENTS, [w["name"] for w in game.weapon_types], [r["id"] for r in game.ranks]))
+        system = self.understand_system(game)
         try:
             data = json.loads(self._chat([{"role": "system", "content": system}, {"role": "user", "content": question}],
                                          max_tokens=200, json_mode=True))
@@ -80,12 +102,12 @@ class LLM:
             elif "table" in b:
                 facts += [" | ".join(r) for r in b["table"]["rows"][:6]]
         fact_text = "\n".join(facts)[:3000]
-        prompt = ("Question: %s\n\nFacts from the %s database:\n%s\n\n"
-                  "Write 1-2 short sentences that answer the question using ONLY these facts. "
-                  "Every name and number you write must appear in the facts. If the facts do not answer the question, reply exactly: NONE"
+        prompt = ("Question: %s\n\nFacts from the %s dataset:\n%s\n\n"
+                  "Write 1-2 short sentences that answer the question using only these facts."
                   % (question, game.label, fact_text))
+        system = self.narrate_prompt.safe_substitute(game=game.label)
         try:
-            text = self._chat([{"role": "system", "content": "You restate database facts. You never add outside knowledge."},
+            text = self._chat([{"role": "system", "content": system},
                                {"role": "user", "content": prompt}], max_tokens=120).strip()
         except Exception:
             return ""

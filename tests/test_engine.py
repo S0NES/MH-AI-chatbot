@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from mhbot.answers import answer                      # noqa: E402
 from mhbot.declarative import SchemaError, load       # noqa: E402
 from mhbot.knowledge import Game, load_games          # noqa: E402
-from mhbot.llm import grounded                        # noqa: E402
+from mhbot.llm import LLM, grounded                   # noqa: E402
 
 RISE_AVAILABLE = (Path(__file__).resolve().parents[1] / "data" / "rise" / "Armors.json").exists()
 
@@ -145,6 +145,44 @@ class OtherFormatTests(unittest.TestCase):
         with self.assertRaises(SchemaError) as ctx:
             load(self.d, self.defn)
         self.assertIn("armors.defense", str(ctx.exception))
+
+
+@unittest.skipUnless(RISE_AVAILABLE, "Rise data folder not present")
+class PromptTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.g = load_games()[0]["rise"]
+        cls.llm = LLM(base_url="http://model.invalid/v1", narrate=True)
+        cls.sent = []
+
+        def fake_chat(messages, max_tokens, json_mode=False):
+            cls.sent.append(messages)
+            return '{"intent": "build", "weapon": "bow", "rank": "low", "skills": [], "name": null}'
+
+        cls.llm._chat = fake_chat
+
+    def test_understand_prompt_carries_the_dataset_and_the_reading_rule(self):
+        system = self.llm.understand_system(self.g)
+        self.assertIn("only its dataset", system)
+        self.assertIn("Read it instead of guessing", system)
+        for name in ("Attack Boost", "Weakness Exploit", "bow", "heavy bowgun", "Low Rank (HR 1-4)"):
+            self.assertIn(name, system)
+        self.assertNotIn("$", system)
+
+    def test_skill_descriptions_can_be_included(self):
+        self.llm.skill_descriptions = True
+        try:
+            self.assertIn("Attack Boost: Increases attack power.", self.llm.understand_system(self.g))
+        finally:
+            self.llm.skill_descriptions = False
+
+    def test_prompt_is_sent_with_every_model_call(self):
+        self.sent.clear()
+        self.llm.understand(self.g, "what armor should an archer use")
+        self.assertEqual(self.sent[0][0]["role"], "system")
+        self.assertIn("only its dataset", self.sent[0][0]["content"])
+        self.llm.narrate(self.g, "q", {"blocks": [{"p": "Attack Boost: Increases attack power."}]})
+        self.assertIn("skill's description", self.sent[1][0]["content"])
 
 
 class GroundingTests(unittest.TestCase):

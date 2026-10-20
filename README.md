@@ -162,6 +162,17 @@ Search on huggingface.co/models with the library filter set to GGUF and a name c
 | `LLM_BASE_URL` | model server the web app talks to; unset disables the model | |
 | `LLM_TIMEOUT` | seconds to wait before using the rules parser | `60` |
 | `LLM_NARRATE` | set to `1` to let the model add a one-sentence summary | `0` |
+| `LLM_SKILL_DESCRIPTIONS` | set to `1` to put every skill's description in the model prompt (about 2500 tokens, so `MHBOT_N_CTX` of 4096 or more) | `0` |
+| `MHBOT_PROMPTS_DIR` | folder with the prompt files | `./prompts` |
+
+### Prompts
+
+The instructions sent to the model are plain text files in `prompts/`, so they can be edited without touching code.
+`understand.txt` is the system prompt for reading a question. It is filled in for the selected game with its weapon
+types, ranks (with their hunter rank ranges) and skill names, and it tells the model to use only the dataset, never to
+invent names, and to read each skill's description in the dataset instead of guessing what it does.
+`narrate.txt` is the system prompt for the optional summary, with the same rules. Placeholders use `$name` syntax:
+`$game`, `$intents`, `$weapons`, `$ranks` and `$skills`.
 
 `LLM_NARRATE` is off by default. A generated sentence cannot be fully verified against the data, so leave
 it off when answers must come strictly from the database.

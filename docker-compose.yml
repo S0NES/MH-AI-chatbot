@@ -23,6 +23,7 @@ services:
     environment:
       LLM_BASE_URL: http://llm:8081/v1
       LLM_TIMEOUT: ${LLM_TIMEOUT:-90}
+      LLM_SKILL_DESCRIPTIONS: ${LLM_SKILL_DESCRIPTIONS:-0}
     depends_on:
       - llm
     expose:
