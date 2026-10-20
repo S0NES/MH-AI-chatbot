@@ -336,7 +336,8 @@
           "type": "materials",
           "item": "item.name",
           "amount": "amount",
-          "default": []
+          "default": [],
+          "link": "item.link"
         },
         "set": "series"
       }
@@ -362,7 +363,8 @@
           "type": "materials",
           "item": "item.name",
           "amount": "amount",
-          "default": []
+          "default": [],
+          "link": "item.link"
         }
       }
     },
@@ -416,7 +418,8 @@
           "type": "materials",
           "item": "item.name",
           "amount": "amount",
-          "default": []
+          "default": [],
+          "link": "item.link"
         }
       }
     },

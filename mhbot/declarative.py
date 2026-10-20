@@ -122,7 +122,8 @@ def convert(spec, rec, game_def):
             if item is MISSING:
                 raise KeyError(spec["item"])
             amount = get_path(e, spec["amount"]) if "amount" in spec else 1
-            out.append((str(item), _to_int(amount) if amount is not MISSING else 1))
+            link = get_path(e, spec["link"]) if "link" in spec else MISSING
+            out.append((str(item), _to_int(amount) if amount is not MISSING else 1, "" if link is MISSING else str(link)))
         return out
     raise ValueError("unknown field type %r" % kind)
 

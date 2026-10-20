@@ -101,7 +101,7 @@ A field is either a dotted path (`"stats.defense"`) or an object `{"path": ..., 
 | `tail_int` | trailing number of a string (`"Attack Jewel 2"` gives 2) |
 | `list_str` + `each` | list of objects to a list of one inner field |
 | `name_levels` + `name`, `level` or `level_path` | list of objects to `{name: level}` |
-| `materials` + `item`, `amount` | list of objects to `[(item, amount)]` |
+| `materials` + `item`, `amount`, optional `link` | list of objects to `[(item, amount, link)]`. When `link` is set, answers list each material with a link to it (the Rise data links every item to Kiranico) |
 | `keys_regex_list` + `pattern` | collect sibling keys such as `lv1`..`lv7` into a list |
 
 The data location can be overridden without editing the file: `MH_DATA_DIR_<ID>` for one game, or

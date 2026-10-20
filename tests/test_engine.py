@@ -24,7 +24,7 @@ def text_of(resp):
             elif isinstance(v, list):
                 out += [str(x) for x in v]
             elif isinstance(v, dict):
-                out += [c for r in v["rows"] for c in r]
+                out += [c["t"] if isinstance(c, dict) else c for r in v["rows"] for c in r]
     return " | ".join(out).lower()
 
 
@@ -94,6 +94,32 @@ class RiseTests(unittest.TestCase):
             self.assertEqual(row[3], self.g.skills[row[0]]["description"])
         counted = {row[0] for row in table["rows"] if row[4] == "yes"}
         self.assertTrue(counted <= set(self.g.weapon_profile("bow")))
+
+    def test_crafting_materials_come_with_their_links(self):
+        armor = next(a for a in self.g.armors if a["materials"])
+        r = answer(self.g, "what materials do I need to craft %s" % armor["name"])
+        self.assertEqual(r["intent"], "recipe")
+        table = next(b["table"] for b in r["blocks"] if "table" in b and b["table"]["head"][0] == "Material")
+        self.assertEqual(len(table["rows"]), len(armor["materials"]))
+        for row, (name, amount, link) in zip(table["rows"], sorted(armor["materials"])):
+            self.assertEqual((row[0], row[1]), (name, "x%d" % amount))
+            self.assertEqual(row[3]["href"], link)
+            self.assertTrue(link.startswith("https://"))
+
+    def test_build_lists_all_materials_needed_for_the_set(self):
+        r = answer(self.g, "best armor for bow low rank")
+        names = [row[1] for b in r["blocks"] if "table" in b and b["table"]["head"][0] == "Part" for row in b["table"]["rows"]]
+        pieces = [a for a in self.g.armors if a["name"] in names]
+        expected = {}
+        for p in pieces:
+            for name, amount, _ in p["materials"]:
+                expected[name] = expected.get(name, 0) + amount
+        self.assertIn("Materials to craft this set", [b.get("h") for b in r["blocks"]])
+        table = next(b["table"] for b in r["blocks"] if "table" in b and b["table"]["head"][0] == "Material")
+        listed = {row[0]: int(row[1][1:]) for row in table["rows"]}
+        for name, amount in expected.items():
+            self.assertGreaterEqual(listed[name], amount)
+        self.assertTrue(all(row[3]["href"].startswith("https://") for row in table["rows"]))
 
     def test_unrelated_question_is_not_answered(self):
         self.assertEqual(answer(self.g, "who won the world cup")["intent"], "unknown")

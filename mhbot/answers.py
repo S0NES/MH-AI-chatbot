@@ -1,12 +1,32 @@
 """Builds answers as display blocks: p, h, list, table and note."""
 import difflib
+from urllib.parse import urlparse
 
 from . import nlu
 from .knowledge import norm
 from .optimizer import optimize
 
+
 def _mats(mats):
-    return ", ".join("%s x%d" % (n, a) for n, a in mats) or "none listed"
+    return ", ".join("%s x%d" % (n, a) for n, a, _ in mats) or "none listed"
+
+
+def _link_cell(url):
+    return {"t": urlparse(url).netloc or "link", "href": url} if url else ""
+
+
+def _materials_table(sources):
+    """Combined material list for crafting several things. sources: [(name of the thing, materials, copies)]."""
+    totals = {}
+    for source, materials, copies in sources:
+        for name, amount, link in materials:
+            entry = totals.setdefault(name, {"amount": 0, "link": link, "for": []})
+            entry["amount"] += amount * copies
+            label = source if copies == 1 else "%s x%d" % (source, copies)
+            if label not in entry["for"]:
+                entry["for"].append(label)
+    rows = [[name, "x%d" % e["amount"], ", ".join(e["for"]), _link_cell(e["link"])] for name, e in sorted(totals.items())]
+    return {"table": {"head": ["Material", "Amount", "Needed for", "Link"], "rows": rows}} if rows else None
 
 
 def _rank_label(game, rank_id):
@@ -50,6 +70,12 @@ def answer_build(game, parsed):
         for _, name in best["decorations"]:
             counts[name] = counts.get(name, 0) + 1
         blocks.append({"p": "Decorations: " + ", ".join("%s x%d" % (n, c) for n, c in sorted(counts.items()))})
+    sources = [(p["name"], p["materials"], 1) for p in sorted(best["pieces"], key=_part_key(game))]
+    by_name = {d["name"]: d for d in game.decorations}
+    sources += [(n, by_name[n]["materials"], c) for n, c in sorted(counts.items())] if best["decorations"] else []
+    materials = _materials_table(sources)
+    if materials:
+        blocks += [{"h": "Materials to craft this set"}, materials]
     prof = best["profile"]
     skill_rows = sorted(best["levels"].items(), key=lambda kv: (kv[0] not in prof, -kv[1], kv[0]))
     blocks.append({"table": {"head": ["Skill", "Level", "Max", "What it does", "Counted"],
@@ -147,7 +173,8 @@ def answer_entity(game, parsed, recipe=False):
     else:
         blocks += [{"p": row["description"]}, {"p": "Buy %d z | sell %d z" % (row["buy"], row["sell"])}]
     if kind != "item":
-        blocks.append({"p": "Materials: %s" % _mats(row["materials"])})
+        table = _materials_table([(row["name"], row["materials"], 1)])
+        blocks += [{"h": "Materials"}, table] if table else [{"p": "No materials are listed for this in the dataset."}]
     return {"intent": "recipe" if recipe else "entity_info", "blocks": blocks, "suggestions": []}
 
 

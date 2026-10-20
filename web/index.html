@@ -34,6 +34,7 @@
   table { border-collapse:collapse; width:100%; margin:8px 0; font-size:.9rem; }
   th, td { text-align:left; padding:6px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
   th { color:var(--muted); font-weight:600; }
+  a { color:var(--accent); }
   .meta { color:var(--muted); font-size:.75rem; margin-top:8px; }
   .hint { color:var(--muted); font-size:.875rem; }
 </style>
@@ -60,6 +61,24 @@ let games = [];
 
 function el(tag, text, cls) { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; }
 
+function cell(value) {
+  const td = el("td");
+  if (value && typeof value === "object") {
+    if (/^https?:\/\//i.test(value.href)) {
+      const a = el("a", value.t);
+      a.href = value.href;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      td.append(a);
+    } else {
+      td.textContent = value.t;
+    }
+  } else {
+    td.textContent = value;
+  }
+  return td;
+}
+
 function renderBlocks(blocks) {
   const box = el("div");
   for (const b of blocks) {
@@ -71,7 +90,7 @@ function renderBlocks(blocks) {
       const t = el("table"), head = el("tr");
       b.table.head.forEach((h) => head.append(el("th", h)));
       t.append(head);
-      b.table.rows.forEach((r) => { const tr = el("tr"); r.forEach((c) => tr.append(el("td", c))); t.append(tr); });
+      b.table.rows.forEach((r) => { const tr = el("tr"); r.forEach((c) => tr.append(cell(c))); t.append(tr); });
       box.append(t);
     }
   }
